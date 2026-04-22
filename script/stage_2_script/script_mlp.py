@@ -1,5 +1,7 @@
 from pathlib import Path
+import csv
 import sys
+import time
 
 
 dough_dir = Path(__file__).resolve().parents[2]
@@ -12,8 +14,106 @@ from code.stage_2_code.Method_MLP import Method_MLP
 from code.stage_2_code.Result_Saver import Result_Saver
 from code.stage_2_code.Setting_Train_Test_Split import Setting_Train_Test_Split
 from code.stage_2_code.Evaluate_Accuracy import Evaluate_Accuracy
+from code.stage_2_code.Evaluate_Precision import Evaluate_Precision
+from code.stage_2_code.Evaluate_Recall import Evaluate_Recall
+from code.stage_2_code.Evaluate_F1 import Evaluate_F1
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
+
+
+def reset_random_seeds(seed):
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
+
+
+def run_experiment(experiment_name, experiment_config, data_dir, result_dir, seed):
+    print()
+    print('============ Experiment:', experiment_name, '============')
+    reset_random_seeds(seed)
+
+    data_obj = Dataset_Loader('stage 2 dataset', '')
+    data_obj.dataset_source_folder_path = str(data_dir)
+    data_obj.train_file_name = 'train.csv'
+    data_obj.test_file_name = 'test.csv'
+
+    method_obj = Method_MLP('multi-layer perceptron', '', config=experiment_config)
+
+    result_obj = Result_Saver('saver', '')
+    result_obj.result_destination_folder_path = str(result_dir / f'{experiment_name}_')
+    result_obj.result_destination_file_name = 'prediction_result'
+
+    setting_obj = Setting_Train_Test_Split('train test split', '')
+    evaluate_obj = Evaluate_Accuracy('accuracy', '')
+
+    setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
+    experiment_start_time = time.perf_counter()
+    accuracy_score, _ = setting_obj.load_run_save_evaluate()
+    total_time_seconds = time.perf_counter() - experiment_start_time
+    prediction_result = result_obj.data
+
+    precision_obj = Evaluate_Precision('precision', '')
+    precision_obj.data = prediction_result
+    precision_score = precision_obj.evaluate()
+
+    recall_obj = Evaluate_Recall('recall', '')
+    recall_obj.data = prediction_result
+    recall_score = recall_obj.evaluate()
+
+    f1_obj = Evaluate_F1('f1', '')
+    f1_obj.data = prediction_result
+    f1_score = f1_obj.evaluate()
+
+    saved_result_path = (
+        result_obj.result_destination_folder_path
+        + result_obj.result_destination_file_name
+        + '_1'
+    )
+
+    plot_path = result_dir / f'{experiment_name}_training_convergence.png'
+    if method_obj.loss_history:
+        plt.figure(figsize=(8, 5))
+        plt.plot(
+            range(1, len(method_obj.loss_history) + 1),
+            method_obj.loss_history,
+            linewidth=2
+        )
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title(f'{experiment_name} Training Convergence')
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200)
+        plt.close()
+
+    print('Device:', method_obj.device)
+    print('Accuracy:', accuracy_score)
+    print('Precision:', precision_score)
+    print('Recall:', recall_score)
+    print('F1:', f1_score)
+    print('Training time (s):', method_obj.training_time_seconds)
+    print('Total experiment time (s):', total_time_seconds)
+    print('Saved predictions:', saved_result_path)
+    print('Saved convergence plot:', plot_path)
+
+    return {
+        'experiment_name': experiment_name,
+        'device': str(method_obj.device),
+        'use_bf16_autocast': method_obj.use_bf16_autocast,
+        'hidden_dims': '-'.join(str(hidden_dim) for hidden_dim in method_obj.hidden_dims),
+        'dropout_rate': method_obj.dropout_rate,
+        'batch_size': method_obj.batch_size,
+        'max_epoch': method_obj.max_epoch,
+        'accuracy': accuracy_score,
+        'precision': precision_score,
+        'recall': recall_score,
+        'f1': f1_score,
+        'training_time_seconds': method_obj.training_time_seconds,
+        'total_time_seconds': total_time_seconds,
+        'prediction_path': saved_result_path,
+        'plot_path': str(plot_path),
+    }
 
 
 # Stage 2 script to do list
@@ -45,37 +145,26 @@ import torch
 #---- Multi-Layer Perceptron script ----
 if 1:
     #---- parameter section -------------------------------
-    np.random.seed(2)
-    torch.manual_seed(2)
+    experiment_seed = 2
+    reset_random_seeds(experiment_seed)
     #------------------------------------------------------
 
     #---- path section ------------------------------------
     data_dir = dough_dir / 'data' / 'stage_2_data'
     result_dir = dough_dir / 'result' / 'stage_2_result'
+    result_dir.mkdir(parents=True, exist_ok=True)
     #------------------------------------------------------
-
-    # ---- objection initialization setction ---------------
-    data_obj = Dataset_Loader('stage 2 dataset', '')
-    data_obj.dataset_source_folder_path = str(data_dir)
-    data_obj.train_file_name = 'train.csv'
-    data_obj.test_file_name = 'test.csv'
-
-    method_obj = Method_MLP('multi-layer perceptron', '')
-
-    result_obj = Result_Saver('saver', '')
-    result_obj.result_destination_folder_path = str(result_dir / 'MLP_')
-    result_obj.result_destination_file_name = 'prediction_result'
-
-    setting_obj = Setting_Train_Test_Split('train test split', '')
-
-    evaluate_obj = Evaluate_Accuracy('accuracy', '')
-    # ------------------------------------------------------
 
     # 1.) Check that the data files can be loaded.
     # This is just a quick sanity check before the full run.
     # ---- quick loading check section ---------------------
     print('Checking if data can be loaded successfully...')
     print()
+
+    data_obj = Dataset_Loader('stage 2 dataset', '')
+    data_obj.dataset_source_folder_path = str(data_dir)
+    data_obj.train_file_name = 'train.csv'
+    data_obj.test_file_name = 'test.csv'
 
     print('Start ==================================')
     print('Data folder:', data_obj.dataset_source_folder_path)
@@ -91,44 +180,66 @@ if 1:
     print('First label:', loaded_data['train']['y'][0])
     print('End ==================================')
 
-    
+    experiment_definitions = [
+        {
+            'name': 'baseline_cuda',
+            'config': {}
+        },
+        {
+            'name': 'ablation_a_wider_dropout',
+            'config': {
+                'hidden_dims': [512, 256, 128],
+                'dropout_rate': 0.2,
+            }
+        },
+        {
+            'name': 'ablation_c_bf16_autocast',
+            'config': {
+                'use_bf16_autocast': True,
+            }
+        },
+        {
+            'name': 'baseline_cpu',
+            'config': {
+                'device': 'cpu',
+            }
+        },
+    ]
 
-    # 2.) Hook everything together.
-    # The setting object is basically a manager.
-    # It needs to know about the data, the model, the saver, and the evaluator.
-    # Call (Uncomment): setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
-    # prepare() is defined in code/base_class/setting.py
+    if not torch.cuda.is_available():
+        experiment_definitions = [
+            experiment_definition
+            for experiment_definition in experiment_definitions
+            if experiment_definition['name'] != 'ablation_c_bf16_autocast'
+        ]
 
-    # 3.) Tell the manager to do the full run.
-    # This one call trains the model, tests it, saves the predictions, and computes accuracy.
-    # Call (Uncomment): setting_obj.load_run_save_evaluate()
-    # load_run_save_evaluate() is defined in code/stage_2_code/Setting_Train_Test_Split.py
-    # Inside that function it calls method_obj.run() which is defined in code/stage_2_code/Method_MLP.py
-    # It gives back the accuracy score (and a second value we can ignore for now).
+    experiment_summaries = []
+    print('************ Start ************')
+    for experiment_definition in experiment_definitions:
+        experiment_summary = run_experiment(
+            experiment_definition['name'],
+            experiment_definition['config'],
+            data_dir,
+            result_dir,
+            experiment_seed,
+        )
+        experiment_summaries.append(experiment_summary)
 
-    # 4.) The save step happens automatically inside the run above.
-    # The saver writes the predictions and the true answers into the result folder.
-    # save() is defined in code/stage_2_code/Result_Saver.py
-    # We do not need to call save ourselves here.
+    summary_csv_path = result_dir / 'experiment_summary.csv'
+    with open(summary_csv_path, 'w', newline='') as summary_file:
+        writer = csv.DictWriter(summary_file, fieldnames=list(experiment_summaries[0].keys()))
+        writer.writeheader()
+        writer.writerows(experiment_summaries)
 
-    # 5.) Compute the other metrics (precision, recall, F1).
-    # The accuracy was already computed in step 3.
-    # For the other three, take the same prediction result and pass it into our other evaluators.
-    # Evaluate_Precision is in code/stage_2_code/Evaluate_Precision.py
-    # Evaluate_Recall is in code/stage_2_code/Evaluate_Recall.py
-    # Evaluate_F1 is in code/stage_2_code/Evaluate_F1.py
-    # Each one has an evaluate() method that returns one number.
-
-    # 6.) Print the final scores.
-    # Just print accuracy, precision, recall, and F1 on plain lines.
-    # Optionally print where the result file was saved.
-
-    # 7.) After the basic run works, try changing the MLP.
-    # All the layer sizes, learning rate, and optimizer are set in code/stage_2_code/Method_MLP.py
-    # Change those values there, re-run this script, and compare the new scores to the first run.
-
-    # 8.) Make the training convergence plot for the report.
-    # The report wants epoch on the x axis and loss on the y axis.
-    # First, Method_MLP (code/stage_2_code/Method_MLP.py) needs to keep a list of loss values during training.
-    # Then here in the script, take that list and plot it with matplotlib.
-    # Save the plot as a png in the result folder so we can drop it into the report.
+    print()
+    print('************ Experiment Summary ************')
+    for experiment_summary in experiment_summaries:
+        print(
+            experiment_summary['experiment_name'],
+            '| device =', experiment_summary['device'],
+            '| accuracy =', experiment_summary['accuracy'],
+            '| f1 =', experiment_summary['f1'],
+            '| training time (s) =', experiment_summary['training_time_seconds']
+        )
+    print('Saved experiment summary:', summary_csv_path)
+    print('************ Finish ************')
