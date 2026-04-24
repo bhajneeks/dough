@@ -1,0 +1,451 @@
+from pathlib import Path
+import csv
+import sys
+import time
+
+
+dough_dir = Path(__file__).resolve().parents[2]
+
+if str(dough_dir) not in sys.path:
+    sys.path.insert(0, str(dough_dir))
+
+from code.stage_2_code.Dataset_Loader import Dataset_Loader
+from code.stage_2_code.Method_MLP import Method_MLP
+from code.stage_2_code.Result_Saver import Result_Saver
+from code.stage_2_code.Setting_Train_Test_Split import Setting_Train_Test_Split
+from code.stage_2_code.Evaluate_Accuracy import Evaluate_Accuracy
+from code.stage_2_code.Evaluate_Precision import Evaluate_Precision
+from code.stage_2_code.Evaluate_Recall import Evaluate_Recall
+from code.stage_2_code.Evaluate_F1 import Evaluate_F1
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+
+
+# Stage 2 script to do list
+# 1.) Read the training data and testing data from the csv files.
+# 2.) Hook up all the pieces so they know about each other (data, model, saver, evaluator).
+# 3.) Train the MLP so it learns patterns from the training data.
+# 4.) Use the trained MLP to make predictions on the testing data.
+# 5.) Save those predictions to a file so we can look at them later.
+# 6.) Compare the predictions to the real answers using accuracy, precision, recall, and F1.
+# 7.) Print the final scores so we can actually read them.
+# 8.) Make a training convergence plot (epoch on x axis, loss on y axis) for the report.
+# 9.) Later, try different MLP setups (more layers, different learning rate, etc) and see if the scores improve.
+
+# Simple metric notes
+
+# Accuracy = correct predictions / total predictions.
+# This is the overall percent the model got right, but it can hide weak performance on some classes.
+
+# Precision = correct predicted items in a class / total predicted items in that class.
+# This tells us how trustworthy the model's predictions are for a class, but it can still miss many true cases.
+
+# Recall = correct predicted items in a class / total true items in that class.
+# This tells us how many real cases the model caught, but it can drop when the model is too careful and predicts less.
+
+# F1 = 2 * precision * recall / (precision + recall).
+# This gives one balanced score for precision and recall, but it can hide which of the two is causing the problem.
+
+
+#---- Multi-Layer Perceptron script ----
+if 1:
+    #---- parameter section -------------------------------
+    experiment_seed = 2
+    np.random.seed(experiment_seed)
+    torch.manual_seed(experiment_seed)
+    #------------------------------------------------------
+
+    #---- path section ------------------------------------
+    data_dir = dough_dir / 'data' / 'stage_2_data'
+    result_dir = dough_dir / 'result' / 'stage_2_result'
+    result_dir.mkdir(parents=True, exist_ok=True)
+    #------------------------------------------------------
+
+    # ---- objection initialization section ---------------
+    data_obj = Dataset_Loader('stage 2 dataset', '')
+    data_obj.dataset_source_folder_path = str(data_dir)
+    data_obj.train_file_name = 'train.csv'
+    data_obj.test_file_name = 'test.csv'
+
+    method_obj = Method_MLP('multi-layer perceptron', '')
+
+    result_obj = Result_Saver('saver', '')
+    result_obj.result_destination_folder_path = str(result_dir / 'MLP_')
+    result_obj.result_destination_file_name = 'prediction_result'
+
+    setting_obj = Setting_Train_Test_Split('train test split', '')
+    evaluate_obj = Evaluate_Accuracy('accuracy', '')
+    # ------------------------------------------------------
+
+    # 1.) Check that the data files can be loaded.
+    # This is just a quick sanity check before the run.
+    # ---- quick loading check section ---------------------
+    print('Checking if data can be loaded successfully...')
+    print()
+
+    print('Start ==================================')
+    print('Data folder:', data_obj.dataset_source_folder_path)
+    print('Train file:', data_obj.train_file_name)
+    print('Test file:', data_obj.test_file_name)
+
+    loaded_data = data_obj.load()
+
+    print('Train instances:', len(loaded_data['train']['X']))
+    print('Test instances:', len(loaded_data['test']['X']))
+    print('Feature count:', len(loaded_data['train']['X'][0]))
+    print('First label:', loaded_data['train']['y'][0])
+    print('End ==================================')
+
+    experiment_summaries = []
+
+    # ============================================================
+    # Experiment 1: baseline_cpu
+    # ============================================================
+    print()
+    print('============ Experiment: baseline_cpu ============')
+    np.random.seed(experiment_seed)
+    torch.manual_seed(experiment_seed)
+
+    method_obj = Method_MLP('multi-layer perceptron', '', config={'device': 'cpu'})
+
+    result_obj = Result_Saver('saver', '')
+    result_obj.result_destination_folder_path = str(result_dir / 'baseline_cpu_')
+    result_obj.result_destination_file_name = 'prediction_result'
+
+    setting_obj = Setting_Train_Test_Split('train test split', '')
+    evaluate_obj = Evaluate_Accuracy('accuracy', '')
+
+    # 2.) Hook everything together.
+    # The setting object is basically a manager.
+    # It needs to know about the data, the model, the saver, and the evaluator.
+    setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
+
+    # 3.) Tell the manager to do the full run.
+    # This one call trains the model, tests it, saves the predictions, and computes accuracy.
+    start_time = time.perf_counter()
+    accuracy_score, _ = setting_obj.load_run_save_evaluate()
+    total_time = time.perf_counter() - start_time
+    prediction_result = result_obj.data
+
+    # 4.) The save step happens automatically inside the run above.
+    # The saver writes the predictions and the true answers into the result folder.
+    saved_result_path = result_obj.result_destination_folder_path + result_obj.result_destination_file_name + '_1'
+
+    # 5.) Compute the other metrics (precision, recall, F1).
+    # The accuracy was already computed in step 3.
+    # For the other three, take the same prediction result and pass it into our other evaluators.
+    precision_obj = Evaluate_Precision('precision', '')
+    precision_obj.data = prediction_result
+    precision_score = precision_obj.evaluate()
+
+    recall_obj = Evaluate_Recall('recall', '')
+    recall_obj.data = prediction_result
+    recall_score = recall_obj.evaluate()
+
+    f1_obj = Evaluate_F1('f1', '')
+    f1_obj.data = prediction_result
+    f1_score = f1_obj.evaluate()
+
+    # 6.) Print the final scores.
+    print('Device:', method_obj.device)
+    print('Accuracy:', accuracy_score)
+    print('Precision:', precision_score)
+    print('Recall:', recall_score)
+    print('F1:', f1_score)
+    print('Training time (s):', method_obj.training_time_seconds)
+    print('Total experiment time (s):', total_time)
+    print('Saved predictions:', saved_result_path)
+
+    # 7.) Make the training convergence plot for the report.
+    # The report wants epoch on the x axis and loss on the y axis.
+    plot_path = result_dir / 'baseline_cpu_training_convergence.png'
+    if method_obj.loss_history:
+        plt.figure(figsize=(8, 5))
+        plt.plot(range(1, len(method_obj.loss_history) + 1), method_obj.loss_history, linewidth=2)
+        plt.xlabel('Epoch')
+        plt.ylabel('Loss')
+        plt.title('baseline_cpu Training Convergence')
+        plt.tight_layout()
+        plt.savefig(plot_path, dpi=200)
+        plt.close()
+        print('Saved convergence plot:', plot_path)
+
+    experiment_summaries.append({
+        'experiment_name': 'baseline_cpu',
+        'device': str(method_obj.device),
+        'use_bf16_autocast': method_obj.use_bf16_autocast,
+        'hidden_dims': '-'.join(str(d) for d in method_obj.hidden_dims),
+        'dropout_rate': method_obj.dropout_rate,
+        'batch_size': method_obj.batch_size,
+        'max_epoch': method_obj.max_epoch,
+        'accuracy': accuracy_score,
+        'precision': precision_score,
+        'recall': recall_score,
+        'f1': f1_score,
+        'training_time_seconds': method_obj.training_time_seconds,
+        'total_time_seconds': total_time,
+        'prediction_path': saved_result_path,
+        'plot_path': str(plot_path),
+    })
+
+    # ============================================================
+    # Experiment 2: baseline_cuda
+    # ============================================================
+    if torch.cuda.is_available():
+        print()
+        print('============ Experiment: baseline_cuda ============')
+        np.random.seed(experiment_seed)
+        torch.manual_seed(experiment_seed)
+        torch.cuda.manual_seed_all(experiment_seed)
+
+        method_obj = Method_MLP('multi-layer perceptron', '', config={})
+
+        result_obj = Result_Saver('saver', '')
+        result_obj.result_destination_folder_path = str(result_dir / 'baseline_cuda_')
+        result_obj.result_destination_file_name = 'prediction_result'
+
+        setting_obj = Setting_Train_Test_Split('train test split', '')
+        evaluate_obj = Evaluate_Accuracy('accuracy', '')
+        setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
+
+        start_time = time.perf_counter()
+        accuracy_score, _ = setting_obj.load_run_save_evaluate()
+        total_time = time.perf_counter() - start_time
+        prediction_result = result_obj.data
+
+        precision_obj = Evaluate_Precision('precision', '')
+        precision_obj.data = prediction_result
+        precision_score = precision_obj.evaluate()
+
+        recall_obj = Evaluate_Recall('recall', '')
+        recall_obj.data = prediction_result
+        recall_score = recall_obj.evaluate()
+
+        f1_obj = Evaluate_F1('f1', '')
+        f1_obj.data = prediction_result
+        f1_score = f1_obj.evaluate()
+
+        saved_result_path = result_obj.result_destination_folder_path + result_obj.result_destination_file_name + '_1'
+
+        plot_path = result_dir / 'baseline_cuda_training_convergence.png'
+        if method_obj.loss_history:
+            plt.figure(figsize=(8, 5))
+            plt.plot(range(1, len(method_obj.loss_history) + 1), method_obj.loss_history, linewidth=2)
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.title('baseline_cuda Training Convergence')
+            plt.tight_layout()
+            plt.savefig(plot_path, dpi=200)
+            plt.close()
+
+        print('Device:', method_obj.device)
+        print('Accuracy:', accuracy_score)
+        print('Precision:', precision_score)
+        print('Recall:', recall_score)
+        print('F1:', f1_score)
+        print('Training time (s):', method_obj.training_time_seconds)
+        print('Total experiment time (s):', total_time)
+        print('Saved predictions:', saved_result_path)
+        print('Saved convergence plot:', plot_path)
+
+        experiment_summaries.append({
+            'experiment_name': 'baseline_cuda',
+            'device': str(method_obj.device),
+            'use_bf16_autocast': method_obj.use_bf16_autocast,
+            'hidden_dims': '-'.join(str(d) for d in method_obj.hidden_dims),
+            'dropout_rate': method_obj.dropout_rate,
+            'batch_size': method_obj.batch_size,
+            'max_epoch': method_obj.max_epoch,
+            'accuracy': accuracy_score,
+            'precision': precision_score,
+            'recall': recall_score,
+            'f1': f1_score,
+            'training_time_seconds': method_obj.training_time_seconds,
+            'total_time_seconds': total_time,
+            'prediction_path': saved_result_path,
+            'plot_path': str(plot_path),
+        })
+
+    # ============================================================
+    # Experiment 3: ablation_a_wider_dropout
+    # ============================================================
+    if torch.cuda.is_available():
+        print()
+        print('============ Experiment: ablation_a_wider_dropout ============')
+        np.random.seed(experiment_seed)
+        torch.manual_seed(experiment_seed)
+        torch.cuda.manual_seed_all(experiment_seed)
+
+        method_obj = Method_MLP('multi-layer perceptron', '', config={
+            'hidden_dims': [512, 256, 128],
+            'dropout_rate': 0.2,
+        })
+
+        result_obj = Result_Saver('saver', '')
+        result_obj.result_destination_folder_path = str(result_dir / 'ablation_a_wider_dropout_')
+        result_obj.result_destination_file_name = 'prediction_result'
+
+        setting_obj = Setting_Train_Test_Split('train test split', '')
+        evaluate_obj = Evaluate_Accuracy('accuracy', '')
+        setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
+
+        start_time = time.perf_counter()
+        accuracy_score, _ = setting_obj.load_run_save_evaluate()
+        total_time = time.perf_counter() - start_time
+        prediction_result = result_obj.data
+
+        precision_obj = Evaluate_Precision('precision', '')
+        precision_obj.data = prediction_result
+        precision_score = precision_obj.evaluate()
+
+        recall_obj = Evaluate_Recall('recall', '')
+        recall_obj.data = prediction_result
+        recall_score = recall_obj.evaluate()
+
+        f1_obj = Evaluate_F1('f1', '')
+        f1_obj.data = prediction_result
+        f1_score = f1_obj.evaluate()
+
+        saved_result_path = result_obj.result_destination_folder_path + result_obj.result_destination_file_name + '_1'
+
+        plot_path = result_dir / 'ablation_a_wider_dropout_training_convergence.png'
+        if method_obj.loss_history:
+            plt.figure(figsize=(8, 5))
+            plt.plot(range(1, len(method_obj.loss_history) + 1), method_obj.loss_history, linewidth=2)
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.title('ablation_a_wider_dropout Training Convergence')
+            plt.tight_layout()
+            plt.savefig(plot_path, dpi=200)
+            plt.close()
+
+        print('Device:', method_obj.device)
+        print('Accuracy:', accuracy_score)
+        print('Precision:', precision_score)
+        print('Recall:', recall_score)
+        print('F1:', f1_score)
+        print('Training time (s):', method_obj.training_time_seconds)
+        print('Total experiment time (s):', total_time)
+        print('Saved predictions:', saved_result_path)
+        print('Saved convergence plot:', plot_path)
+
+        experiment_summaries.append({
+            'experiment_name': 'ablation_a_wider_dropout',
+            'device': str(method_obj.device),
+            'use_bf16_autocast': method_obj.use_bf16_autocast,
+            'hidden_dims': '-'.join(str(d) for d in method_obj.hidden_dims),
+            'dropout_rate': method_obj.dropout_rate,
+            'batch_size': method_obj.batch_size,
+            'max_epoch': method_obj.max_epoch,
+            'accuracy': accuracy_score,
+            'precision': precision_score,
+            'recall': recall_score,
+            'f1': f1_score,
+            'training_time_seconds': method_obj.training_time_seconds,
+            'total_time_seconds': total_time,
+            'prediction_path': saved_result_path,
+            'plot_path': str(plot_path),
+        })
+
+    # ============================================================
+    # Experiment 4: ablation_c_bf16_autocast
+    # ============================================================
+    if torch.cuda.is_available():
+        print()
+        print('============ Experiment: ablation_c_bf16_autocast ============')
+        np.random.seed(experiment_seed)
+        torch.manual_seed(experiment_seed)
+        torch.cuda.manual_seed_all(experiment_seed)
+
+        method_obj = Method_MLP('multi-layer perceptron', '', config={
+            'use_bf16_autocast': True,
+        })
+
+        result_obj = Result_Saver('saver', '')
+        result_obj.result_destination_folder_path = str(result_dir / 'ablation_c_bf16_autocast_')
+        result_obj.result_destination_file_name = 'prediction_result'
+
+        setting_obj = Setting_Train_Test_Split('train test split', '')
+        evaluate_obj = Evaluate_Accuracy('accuracy', '')
+        setting_obj.prepare(data_obj, method_obj, result_obj, evaluate_obj)
+
+        start_time = time.perf_counter()
+        accuracy_score, _ = setting_obj.load_run_save_evaluate()
+        total_time = time.perf_counter() - start_time
+        prediction_result = result_obj.data
+
+        precision_obj = Evaluate_Precision('precision', '')
+        precision_obj.data = prediction_result
+        precision_score = precision_obj.evaluate()
+
+        recall_obj = Evaluate_Recall('recall', '')
+        recall_obj.data = prediction_result
+        recall_score = recall_obj.evaluate()
+
+        f1_obj = Evaluate_F1('f1', '')
+        f1_obj.data = prediction_result
+        f1_score = f1_obj.evaluate()
+
+        saved_result_path = result_obj.result_destination_folder_path + result_obj.result_destination_file_name + '_1'
+
+        plot_path = result_dir / 'ablation_c_bf16_autocast_training_convergence.png'
+        if method_obj.loss_history:
+            plt.figure(figsize=(8, 5))
+            plt.plot(range(1, len(method_obj.loss_history) + 1), method_obj.loss_history, linewidth=2)
+            plt.xlabel('Epoch')
+            plt.ylabel('Loss')
+            plt.title('ablation_c_bf16_autocast Training Convergence')
+            plt.tight_layout()
+            plt.savefig(plot_path, dpi=200)
+            plt.close()
+
+        print('Device:', method_obj.device)
+        print('Accuracy:', accuracy_score)
+        print('Precision:', precision_score)
+        print('Recall:', recall_score)
+        print('F1:', f1_score)
+        print('Training time (s):', method_obj.training_time_seconds)
+        print('Total experiment time (s):', total_time)
+        print('Saved predictions:', saved_result_path)
+        print('Saved convergence plot:', plot_path)
+
+        experiment_summaries.append({
+            'experiment_name': 'ablation_c_bf16_autocast',
+            'device': str(method_obj.device),
+            'use_bf16_autocast': method_obj.use_bf16_autocast,
+            'hidden_dims': '-'.join(str(d) for d in method_obj.hidden_dims),
+            'dropout_rate': method_obj.dropout_rate,
+            'batch_size': method_obj.batch_size,
+            'max_epoch': method_obj.max_epoch,
+            'accuracy': accuracy_score,
+            'precision': precision_score,
+            'recall': recall_score,
+            'f1': f1_score,
+            'training_time_seconds': method_obj.training_time_seconds,
+            'total_time_seconds': total_time,
+            'prediction_path': saved_result_path,
+            'plot_path': str(plot_path),
+        })
+
+    # ============================================================
+    # Summary
+    # ============================================================
+    summary_csv_path = result_dir / 'experiment_summary.csv'
+    with open(summary_csv_path, 'w', newline='') as summary_file:
+        writer = csv.DictWriter(summary_file, fieldnames=list(experiment_summaries[0].keys()))
+        writer.writeheader()
+        writer.writerows(experiment_summaries)
+
+    print()
+    print('************ Experiment Summary ************')
+    for s in experiment_summaries:
+        print(
+            s['experiment_name'],
+            '| device =', s['device'],
+            '| accuracy =', s['accuracy'],
+            '| f1 =', s['f1'],
+            '| training time (s) =', s['training_time_seconds']
+        )
+    print('Saved experiment summary:', summary_csv_path)
+    print('************ Finish ************')
