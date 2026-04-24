@@ -1,5 +1,6 @@
 from pathlib import Path
 import sys
+import matplotlib.pyplot as plt
 
 
 dough_dir = Path(__file__).resolve().parents[2]
@@ -132,3 +133,17 @@ if 1:
     # First, Method_MLP (code/stage_2_code/Method_MLP.py) needs to keep a list of loss values during training.
     # Then here in the script, take that list and plot it with matplotlib.
     # Save the plot as a png in the result folder so we can drop it into the report.
+   
+    """
+    loss = method_obj.loss_history
+    epochs = range(1, len(loss)+1)
+    plt.figure(figsize=(10,6))
+    plt.plot(epochs, loss, label='Training Loss', color='steelblue')
+
+    plt.title('Model Training Convergence')
+    plt.xlabel('Epoch')
+    plt.ylabel('Loss')
+    plt.legend()
+    plt.savefig('convergence_plot.png')
+    plt.show()
+    """

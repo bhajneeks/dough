@@ -33,6 +33,11 @@ class Method_MLP(method, nn.Module):
         # check here for nn.Softmax doc: https://pytorch.org/docs/stable/generated/torch.nn.Softmax.html
         self.activation_func_2 = nn.Softmax(dim=1)
 
+        """
+        # keep track of loss for each epoch
+        self.loss_history = []
+        """
+
     # it defines the forward propagation function for input x
     # this function will calculate the output layer by layer
     def forward(self, x):
@@ -53,6 +58,12 @@ class Method_MLP(method, nn.Module):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
         # check here for the nn.CrossEntropyLoss doc: https://pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html
         loss_function = nn.CrossEntropyLoss()
+
+        """
+        # keep track of loss for each epoch
+        self.loss_history = []
+        """
+
         # for training accuracy investigation purpose
         accuracy_evaluator = Evaluate_Accuracy('training evaluator', '')
 
@@ -67,6 +78,11 @@ class Method_MLP(method, nn.Module):
             # calculate the training loss
             train_loss = loss_function(y_pred, y_true)
 
+            """
+            # append epoch's loss to array
+            self.loss_history.append(train_loss.item())
+            """
+            
             # check here for the gradient init doc: https://pytorch.org/docs/stable/generated/torch.optim.Optimizer.zero_grad.html
             optimizer.zero_grad()
             # check here for the loss.backward doc: https://pytorch.org/docs/stable/generated/torch.Tensor.backward.html
