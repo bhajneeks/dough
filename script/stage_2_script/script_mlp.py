@@ -155,16 +155,25 @@ if 1:
     result_dir.mkdir(parents=True, exist_ok=True)
     #------------------------------------------------------
 
-    # 1.) Check that the data files can be loaded.
-    # This is just a quick sanity check before the full run.
-    # ---- quick loading check section ---------------------
-    print('Checking if data can be loaded successfully...')
-    print()
-
+    # ---- objection initialization section ---------------
     data_obj = Dataset_Loader('stage 2 dataset', '')
     data_obj.dataset_source_folder_path = str(data_dir)
     data_obj.train_file_name = 'train.csv'
     data_obj.test_file_name = 'test.csv'
+
+    result_obj = Result_Saver('saver', '')
+    result_obj.result_destination_folder_path = str(result_dir / 'MLP_')
+    result_obj.result_destination_file_name = 'prediction_result'
+
+    setting_obj = Setting_Train_Test_Split('train test split', '')
+    evaluate_obj = Evaluate_Accuracy('accuracy', '')
+    # ------------------------------------------------------
+
+    # 1.) Check that the data files can be loaded.
+    # This is just a quick sanity check before the run.
+    # ---- quick loading check section ---------------------
+    print('Checking if data can be loaded successfully...')
+    print()
 
     print('Start ==================================')
     print('Data folder:', data_obj.dataset_source_folder_path)
@@ -173,13 +182,13 @@ if 1:
 
     loaded_data = data_obj.load()
 
-
     print('Train instances:', len(loaded_data['train']['X']))
     print('Test instances:', len(loaded_data['test']['X']))
     print('Feature count:', len(loaded_data['train']['X'][0]))
     print('First label:', loaded_data['train']['y'][0])
     print('End ==================================')
 
+    # ---- experiment definitions section ------------------
     experiment_definitions = [
         {
             'name': 'baseline_cuda',
@@ -213,6 +222,10 @@ if 1:
             if experiment_definition['name'] != 'ablation_c_bf16_autocast'
         ]
 
+    # ------------------------------------------------------
+
+    # 2.) Hook everything together and run each experiment.
+    # The function run_experiment() handles: prepare → train → test → save → evaluate → plot.
     experiment_summaries = []
     print('************ Start ************')
     for experiment_definition in experiment_definitions:
@@ -225,12 +238,14 @@ if 1:
         )
         experiment_summaries.append(experiment_summary)
 
+    # 3.) Save a summary CSV so we can compare all experiments at a glance.
     summary_csv_path = result_dir / 'experiment_summary.csv'
     with open(summary_csv_path, 'w', newline='') as summary_file:
         writer = csv.DictWriter(summary_file, fieldnames=list(experiment_summaries[0].keys()))
         writer.writeheader()
         writer.writerows(experiment_summaries)
 
+    # 4.) Print the final summary table.
     print()
     print('************ Experiment Summary ************')
     for experiment_summary in experiment_summaries:
