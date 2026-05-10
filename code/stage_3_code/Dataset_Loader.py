@@ -1,5 +1,5 @@
 '''
-Starter IO class for the Stage 3 image datasets.
+Concrete IO class for the Stage 3 image datasets.
 '''
 
 from pathlib import Path
@@ -32,7 +32,8 @@ class Dataset_Loader(dataset):
             return self.dataset_source_file_name
 
         if self.dataset_key is None:
-            raise ValueError('Set dataset_key to one of: mnist, orl, cifar.')
+            # This branch is only running CIFAR, so make that the default.
+            self.dataset_key = 'cifar'
 
         normalized_key = self.dataset_key.lower()
         if normalized_key not in self.dataset_files:
@@ -72,3 +73,18 @@ class Dataset_Loader(dataset):
             'first_image_shape': tuple(image_shape) if image_shape is not None else None,
             'first_label': first_label,
         }
+
+    def load_all(self):
+        # DV: You guys can use this helper when adding the other datasets back.
+        return {
+            dataset_key: Dataset_Loader(
+                self.dataset_name,
+                self.dataset_description,
+                dataset_key=dataset_key,
+            )._load_from_folder(self.dataset_source_folder_path)
+            for dataset_key in self.dataset_files
+        }
+
+    def _load_from_folder(self, dataset_source_folder_path):
+        self.dataset_source_folder_path = dataset_source_folder_path
+        return self.load()
