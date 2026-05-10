@@ -160,7 +160,7 @@ def run_experiment(experiment, data_dir, result_dir, seed):
 
 def experiment_definitions(profile):
     # DV: You guys can add MNIST/ORL experiment configs here later.
-    allowed_profiles = ('cifar_main', 'cifar_wide', 'cifar_ablation', 'cifar_all')
+    allowed_profiles = ('cifar_main', 'cifar_wide', 'cifar_ablation', 'cifar_all', 'orl_all')
     if profile not in allowed_profiles:
         raise ValueError('This CIFAR-only branch supports these profiles: ' + ', '.join(allowed_profiles))
 
@@ -215,14 +215,79 @@ def experiment_definitions(profile):
         },
     }
 
+    orl_experiment = {
+      'name': 'orl_cnn',
+      'dataset_key': 'orl',
+      'config': {
+          'architecture': 'residual',
+          'widths': [32, 64, 128],
+          'blocks_per_stage': 2,
+          'dropout': 0.1,
+          'max_epoch': 40,
+          'batch_size': 16,
+          'optimizer': 'adamw',
+          'learning_rate': 1e-3,
+          'weight_decay': 1e-4,
+          'label_smoothing': 0.0,
+          'mixup_alpha': 0.0,
+          'augment': False,
+          'use_bf16_autocast': False,
+          'input_channels': 1,
+          'class_count': 40,
+      },
+    }
+
+    orl_small = {
+      'name': 'orl_small',
+      'dataset_key': 'orl',
+      'config': {
+          'architecture': 'residual',
+          'widths': [16, 32, 64],
+          'blocks_per_stage': 2,
+          'dropout': 0.1,
+          'max_epoch': 40,
+          'batch_size': 16,
+          'optimizer': 'adamw',
+          'learning_rate': 1e-3,
+          'weight_decay': 1e-4,
+          'augment': False,
+          'input_channels': 1,
+          'class_count': 40,
+      },
+    }
+
+    orl_no_dropout = {
+      'name': 'orl_no_dropout',
+      'dataset_key': 'orl',
+      'config': {
+          'architecture': 'residual',
+          'widths': [32, 64, 128],
+          'blocks_per_stage': 2,
+          'dropout': 0.0,
+          'max_epoch': 40,
+          'batch_size': 16,
+          'optimizer': 'adamw',
+          'learning_rate': 1e-3,
+          'weight_decay': 1e-4,
+          'augment': False,
+          'input_channels': 1,
+          'class_count': 40,
+      },
+    }
+    
+
     # DV: These epoch counts were for my GPU, so lower them if your laptop is slow.
     if profile == 'cifar_main':
         return [main_cnn_experiment]
 
     if profile in ('cifar_wide', 'cifar_ablation'):
         return [wideresnet_ablation]
+    
+    if profile == 'orl_all':
+      return [orl_experiment, orl_small, orl_no_dropout]
 
-    return [main_cnn_experiment, wideresnet_ablation]
+    if profile == 'cifar_all':
+      return [main_cnn_experiment, wideresnet_ablation]
 
 
 if __name__ == '__main__':
@@ -255,3 +320,5 @@ if __name__ == '__main__':
     print()
     print('Saved summary:', summary_path)
     print('************ Finish ************')
+
+

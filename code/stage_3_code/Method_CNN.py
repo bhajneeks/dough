@@ -12,22 +12,34 @@ from torch.utils.data import DataLoader, Dataset
 
 class Stage3ImageDataset(Dataset):
     def __init__(self, instances, dataset_key, train=False, augment=False, mean=None, std=None, augmentation_config=None):
-        self.dataset_key = dataset_key.lower()
-        if self.dataset_key != 'cifar':
-            # DV: You guys can add MNIST/ORL dataset logic here later.
-            raise ValueError('This branch only implements CIFAR. Add the other dataset logic here later.')
+      self.dataset_key = dataset_key.lower()
+      if self.dataset_key not in ['cifar', 'orl']:
+        raise ValueError('Supported datasets: cifar, orl')
 
-        self.train = train
-        self.augment = augment
-        self.augmentation_config = augmentation_config or {}
-        self.cifar_padding = int(self.augmentation_config.get('cifar_padding', 4))
-        self.cutout_size = int(self.augmentation_config.get('cutout_size', 8))
-        self.cutout_probability = float(self.augmentation_config.get('cutout_probability', 0.35))
-        self.color_jitter_probability = float(self.augmentation_config.get('color_jitter_probability', 0.0))
-        self.color_jitter_strength = float(self.augmentation_config.get('color_jitter_strength', 0.12))
-        self.images, self.labels = self._build_tensors(instances)
-        self.mean = mean if mean is not None else self.images.mean(dim=(0, 2, 3), keepdim=True)
-        self.std = std if std is not None else self.images.std(dim=(0, 2, 3), keepdim=True).clamp_min(1e-6)
+      self.train = train
+      self.augment = augment
+      self.augmentation_config = augmentation_config or {}
+
+      # CIFAR-specific augmentation settings
+      if self.dataset_key == 'cifar':
+          self.cifar_padding = int(self.augmentation_config.get('cifar_padding', 4))
+          self.cutout_size = int(self.augmentation_config.get('cutout_size', 8))
+          self.cutout_probability = float(self.augmentation_config.get('cutout_probability', 0.35))
+          self.color_jitter_probability = float(self.augmentation_config.get('color_jitter_probability', 0.0))
+          self.color_jitter_strength = float(self.augmentation_config.get('color_jitter_strength', 0.12))
+
+      # ORL 
+      elif self.dataset_key == 'orl':
+          self.cifar_padding = 0
+          self.cutout_size = 0
+          self.cutout_probability = 0.0
+          self.color_jitter_probability = 0.0
+          self.color_jitter_strength = 0.0
+
+      self.images, self.labels = self._build_tensors(instances)
+
+      self.mean = mean if mean is not None else self.images.mean(dim=(0, 2, 3), keepdim=True)
+      self.std = std if std is not None else self.images.std(dim=(0, 2, 3), keepdim=True).clamp_min(1e-6)
 
     def _build_tensors(self, instances):
         images = []
@@ -38,7 +50,18 @@ class Stage3ImageDataset(Dataset):
 
             # DV: You guys can add MNIST/ORL image-shape conversion here later.
             # This keeps CIFAR images in channel-first format for PyTorch.
-            image = np.transpose(image, (2, 0, 1))
+            if self.dataset_key == 'cifar':
+              image = np.transpose(image, (2, 0, 1))
+            elif self.dataset_key == 'orl':
+              label = label - 1
+              # grayscale -> add channel dimension
+              if len(image.shape) == 2:
+                  image = np.expand_dims(image, axis=0)
+
+              # if ORL accidentally stored as RGB
+              elif len(image.shape) == 3:
+                  image = image[:, :, 0]
+                  image = np.expand_dims(image, axis=0)
 
             images.append(torch.tensor(image, dtype=torch.float32) / 255.0)
             labels.append(label)
@@ -290,16 +313,19 @@ class Method_CNN(method, nn.Module):
         self.ema_parameter_keys = {name for name, _ in self.named_parameters()}
 
     def _validate_dataset_key(self):
-        if self.dataset_key != 'cifar':
-            # DV: You guys can allow MNIST/ORL here after those sections are done.
-            raise ValueError('This branch only implements CIFAR. MNIST/ORL can be added back in their own sections.')
-
+      if self.dataset_key not in ['cifar', 'orl']:
+        raise ValueError('Supported datasets: cifar, orl')
+        
     def _default_class_count(self):
         # DV: You guys can branch here for ORL's 40 classes later.
+        if self.dataset_key == 'orl':
+          return 40
         return 10
 
     def _default_input_channels(self):
         # DV: You guys can branch here for grayscale datasets later.
+        if self.dataset_key == 'orl':
+          return 1
         return 3
 
     def _build_network(self):
@@ -622,3 +648,5 @@ class Method_CNN(method, nn.Module):
             'best_epoch': self.best_epoch,
             'best_accuracy': self.best_accuracy,
         }
+
+
