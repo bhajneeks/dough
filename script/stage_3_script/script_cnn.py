@@ -256,6 +256,50 @@ def experiment_definitions(profile):
       },
     }
 
+    orl_sgd = {
+      'name': 'orl_sgd',
+      'dataset_key': 'orl',
+      'config': {
+          'architecture': 'residual',
+          'widths': [32, 64, 128],
+          'blocks_per_stage': 2,
+          'dropout': 0.1,
+          'max_epoch': 40,
+          'batch_size': 16,
+          'optimizer': 'sgd',
+          'learning_rate': 1e-3,
+          'weight_decay': 1e-4,
+          'label_smoothing': 0.0,
+          'mixup_alpha': 0.0,
+          'augment': False,
+          'use_bf16_autocast': False,
+          'input_channels': 1,
+          'class_count': 40,
+      },
+    }
+
+    orl_sgd_enhanced = {
+      'name': 'orl_sgd_enhanced',
+      'dataset_key': 'orl',
+      'config': {
+          'architecture': 'residual',
+          'widths': [32, 64, 128],
+          'blocks_per_stage': 2,
+          'dropout': 0.1,
+          'max_epoch': 40,
+          'batch_size': 16,
+          'optimizer': 'sgd',
+          'learning_rate': 0.05,
+          'weight_decay': 1e-4,
+          'label_smoothing': 0.0,
+          'mixup_alpha': 0.0,
+          'augment': False,
+          'use_bf16_autocast': False,
+          'input_channels': 1,
+          'class_count': 40,
+      },
+    }
+
     orl_no_dropout = {
       'name': 'orl_no_dropout',
       'dataset_key': 'orl',
@@ -284,7 +328,7 @@ def experiment_definitions(profile):
         return [wideresnet_ablation]
     
     if profile == 'orl_all':
-      return [orl_experiment, orl_small, orl_no_dropout]
+      return [orl_sgd, orl_sgd_enhanced, orl_experiment, orl_small, orl_no_dropout]
 
     if profile == 'cifar_all':
       return [main_cnn_experiment, wideresnet_ablation]
