@@ -13,12 +13,15 @@ from torch.utils.data import DataLoader, Dataset
 class Stage3ImageDataset(Dataset):
     def __init__(self, instances, dataset_key, train=False, augment=False, mean=None, std=None, augmentation_config=None):
       self.dataset_key = dataset_key.lower()
-      if self.dataset_key not in ['cifar', 'orl']:
-        raise ValueError('Supported datasets: cifar, orl')
+      if self.dataset_key not in ['mnist', 'cifar', 'orl']:
+        raise ValueError('Supported datasets: mnist, cifar, orl')
 
       self.train = train
       self.augment = augment
       self.augmentation_config = augmentation_config or {}
+
+      if self.dataset_key == 'mnist':
+          self.mnist_padding = int(self.augmentation_config.get('mnist_padding', 2))
 
       # CIFAR-specific augmentation settings
       if self.dataset_key == 'cifar':
@@ -50,7 +53,9 @@ class Stage3ImageDataset(Dataset):
 
             # DV: You guys can add MNIST/ORL image-shape conversion here later.
             # This keeps CIFAR images in channel-first format for PyTorch.
-            if self.dataset_key == 'cifar':
+            if self.dataset_key == 'mnist':
+              image = np.expand_dims(image, axis=0)
+            elif self.dataset_key == 'cifar':
               image = np.transpose(image, (2, 0, 1))
             elif self.dataset_key == 'orl':
               label = label - 1
@@ -104,7 +109,9 @@ class Stage3ImageDataset(Dataset):
         return (image * channel_scale).clamp(0.0, 1.0)
 
     def _augment_image(self, image):
-        # DV: You guys can add dataset-specific augmentation branches here later.
+        if self.dataset_key == 'mnist':
+            return self._random_crop(image, self.mnist_padding)
+
         # These are standard CIFAR tricks: crop, flip, small color changes, and cutout.
         image = self._random_crop(image, self.cifar_padding)
         if torch.rand(1).item() < 0.5:
@@ -257,6 +264,26 @@ class WideResidualCNN(nn.Module):
         return self.classifier(x)
 
 
+class LeNetStyleCNN(nn.Module):
+    def __init__(self, input_channels, class_count, base_width=32, dropout=0.1):
+        super().__init__()
+        self.network = nn.Sequential(
+            ConvBNAct(input_channels, base_width, kernel_size=5, padding=2),
+            nn.MaxPool2d(2),
+            ConvBNAct(base_width, base_width * 2, kernel_size=3),
+            nn.MaxPool2d(2),
+            ConvBNAct(base_width * 2, base_width * 4, kernel_size=3),
+            ConvBNAct(base_width * 4, base_width * 4, kernel_size=3),
+            nn.AdaptiveAvgPool2d(1),
+            nn.Flatten(),
+            nn.Dropout(dropout),
+            nn.Linear(base_width * 4, class_count),
+        )
+
+    def forward(self, x):
+        return self.network(x)
+
+
 class Method_CNN(method, nn.Module):
     data = None
     max_epoch = 20
@@ -313,8 +340,8 @@ class Method_CNN(method, nn.Module):
         self.ema_parameter_keys = {name for name, _ in self.named_parameters()}
 
     def _validate_dataset_key(self):
-      if self.dataset_key not in ['cifar', 'orl']:
-        raise ValueError('Supported datasets: cifar, orl')
+      if self.dataset_key not in ['mnist', 'cifar', 'orl']:
+        raise ValueError('Supported datasets: mnist, cifar, orl')
         
     def _default_class_count(self):
         # DV: You guys can branch here for ORL's 40 classes later.
@@ -324,7 +351,7 @@ class Method_CNN(method, nn.Module):
 
     def _default_input_channels(self):
         # DV: You guys can branch here for grayscale datasets later.
-        if self.dataset_key == 'orl':
+        if self.dataset_key in ['mnist', 'orl']:
           return 1
         return 3
 
@@ -332,7 +359,15 @@ class Method_CNN(method, nn.Module):
         # DV: You guys can add back lenet/spatial models in this method.
         architecture = self.config.get('architecture')
         if architecture is None:
-            architecture = 'residual'
+            architecture = 'lenet' if self.dataset_key == 'mnist' else 'residual'
+
+        if architecture == 'lenet':
+            return LeNetStyleCNN(
+                self.input_channels,
+                self.class_count,
+                base_width=int(self.config.get('base_width', 32)),
+                dropout=float(self.config.get('dropout', 0.1)),
+            )
 
         if architecture == 'residual':
             # This is the main CIFAR CNN for the project.

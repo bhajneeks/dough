@@ -136,6 +136,9 @@ def run_experiment(experiment, data_dir, result_dir, seed):
         'learning_rate': method_obj.learning_rate,
         'weight_decay': method_obj.weight_decay,
         'dropout': config.get('dropout', ''),
+        'base_width': config.get('base_width', ''),
+        'widths': config.get('widths', ''),
+        'blocks_per_stage': config.get('blocks_per_stage', ''),
         'depth': config.get('depth', ''),
         'widen_factor': config.get('widen_factor', ''),
         'augment': method_obj.augment,
@@ -159,10 +162,126 @@ def run_experiment(experiment, data_dir, result_dir, seed):
 
 
 def experiment_definitions(profile):
-    # DV: You guys can add MNIST/ORL experiment configs here later.
-    allowed_profiles = ('cifar_main', 'cifar_wide', 'cifar_ablation', 'cifar_all', 'orl_all')
+    allowed_profiles = (
+        'mnist_quick',
+        'mnist_main',
+        'mnist_ablation',
+        'mnist_all',
+        'cifar_main',
+        'cifar_wide',
+        'cifar_ablation',
+        'cifar_all',
+        'orl_all',
+        'stage3_all',
+    )
     if profile not in allowed_profiles:
-        raise ValueError('This CIFAR-only branch supports these profiles: ' + ', '.join(allowed_profiles))
+        raise ValueError('This Stage 3 branch supports these profiles: ' + ', '.join(allowed_profiles))
+
+    mnist_quick = {
+        'name': 'mnist_lenet_quick',
+        'dataset_key': 'mnist',
+        'config': {
+            'architecture': 'lenet',
+            'base_width': 48,
+            'dropout': 0.05,
+            'max_epoch': 3,
+            'batch_size': 1024,
+            'optimizer': 'adamw',
+            'learning_rate': 1e-3,
+            'weight_decay': 1e-4,
+            'label_smoothing': 0.02,
+            'augment': True,
+            'mnist_padding': 2,
+            'use_bf16_autocast': True,
+            'input_channels': 1,
+            'class_count': 10,
+        },
+    }
+
+    mnist_main = {
+        'name': 'mnist_lenet_bf16',
+        'dataset_key': 'mnist',
+        'config': {
+            'architecture': 'lenet',
+            'base_width': 48,
+            'dropout': 0.05,
+            'max_epoch': 18,
+            'batch_size': 1024,
+            'optimizer': 'adamw',
+            'learning_rate': 1e-3,
+            'weight_decay': 1e-4,
+            'label_smoothing': 0.02,
+            'augment': True,
+            'mnist_padding': 2,
+            'use_bf16_autocast': True,
+            'input_channels': 1,
+            'class_count': 10,
+        },
+    }
+
+    mnist_small = {
+        'name': 'mnist_lenet_small',
+        'dataset_key': 'mnist',
+        'config': {
+            'architecture': 'lenet',
+            'base_width': 24,
+            'dropout': 0.05,
+            'max_epoch': 12,
+            'batch_size': 1024,
+            'optimizer': 'adamw',
+            'learning_rate': 1e-3,
+            'weight_decay': 1e-4,
+            'label_smoothing': 0.02,
+            'augment': True,
+            'mnist_padding': 2,
+            'use_bf16_autocast': True,
+            'input_channels': 1,
+            'class_count': 10,
+        },
+    }
+
+    mnist_no_dropout = {
+        'name': 'mnist_lenet_no_dropout',
+        'dataset_key': 'mnist',
+        'config': {
+            'architecture': 'lenet',
+            'base_width': 48,
+            'dropout': 0.0,
+            'max_epoch': 12,
+            'batch_size': 1024,
+            'optimizer': 'adamw',
+            'learning_rate': 1e-3,
+            'weight_decay': 1e-4,
+            'label_smoothing': 0.02,
+            'augment': True,
+            'mnist_padding': 2,
+            'use_bf16_autocast': True,
+            'input_channels': 1,
+            'class_count': 10,
+        },
+    }
+
+    mnist_residual = {
+        'name': 'mnist_residual',
+        'dataset_key': 'mnist',
+        'config': {
+            'architecture': 'residual',
+            'widths': [32, 64, 128],
+            'blocks_per_stage': 1,
+            'dropout': 0.05,
+            'max_epoch': 12,
+            'batch_size': 1024,
+            'optimizer': 'adamw',
+            'learning_rate': 1e-3,
+            'weight_decay': 1e-4,
+            'label_smoothing': 0.02,
+            'augment': True,
+            'mnist_padding': 2,
+            'use_bf16_autocast': True,
+            'input_channels': 1,
+            'class_count': 10,
+        },
+    }
 
     main_cnn_experiment = {
         'name': 'cifar_residual_bf16',
@@ -321,6 +440,18 @@ def experiment_definitions(profile):
     
 
     # DV: These epoch counts were for my GPU, so lower them if your laptop is slow.
+    if profile == 'mnist_quick':
+        return [mnist_quick]
+
+    if profile == 'mnist_main':
+        return [mnist_main]
+
+    if profile == 'mnist_ablation':
+        return [mnist_small, mnist_no_dropout, mnist_residual]
+
+    if profile == 'mnist_all':
+        return [mnist_quick, mnist_main, mnist_small, mnist_no_dropout, mnist_residual]
+
     if profile == 'cifar_main':
         return [main_cnn_experiment]
 
@@ -332,6 +463,18 @@ def experiment_definitions(profile):
 
     if profile == 'cifar_all':
       return [main_cnn_experiment, wideresnet_ablation]
+
+    if profile == 'stage3_all':
+      return [
+          mnist_main,
+          orl_sgd,
+          orl_sgd_enhanced,
+          orl_experiment,
+          orl_small,
+          orl_no_dropout,
+          main_cnn_experiment,
+          wideresnet_ablation,
+      ]
 
 
 if __name__ == '__main__':
