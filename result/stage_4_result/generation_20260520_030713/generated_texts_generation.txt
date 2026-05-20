@@ -1,0 +1,54 @@
+=== gen_lstm (lstm) ===
+  temp=0.6, seeds=['what', 'did', 'the'] -> what did the pebble say to the other ocean nothing joke my life
+  temp=0.6, seeds=['why', 'did', 'the'] -> why did the fish get away away because it was a shellfish
+  temp=0.6, seeds=['how', 'do', 'you'] -> how do you make a squid with a teletubbie
+  temp=0.6, seeds=['i', 'told', 'my'] -> i told my girlfriend he said my girlfriend to be ambidextrous i am nah but it
+  temp=0.8, seeds=['what', 'did', 'the'] -> what did the difference say to the eight math eight belt you rows
+  temp=0.8, seeds=['why', 'did', 'the'] -> why did the chicken cross the road to get to the other bride
+  temp=0.8, seeds=['how', 'do', 'you'] -> how do you make a squid laugh ten tickles
+  temp=0.8, seeds=['i', 'told', 'my'] -> i told my cat lemons it too voted
+  temp=1.0, seeds=['what', 'did', 'the'] -> what did the 8 say to the same man weigh
+  temp=1.0, seeds=['why', 'did', 'the'] -> why did the vampire book get over it saw the salad dressing
+  temp=1.0, seeds=['how', 'do', 'you'] -> how do you confuse a broken dance you put a martini who together
+  temp=1.0, seeds=['i', 'told', 'my'] -> i told my joke my age i guess hes been funny
+  temp=1.2, seeds=['what', 'did', 'the'] -> what did the floor say to the jumper 230 quack quack
+  temp=1.2, seeds=['why', 'did', 'the'] -> why did the strawberry guy attend everyone he hurt the steps
+  temp=1.2, seeds=['how', 'do', 'you'] -> how do you think the unthinkable that makes come leg tennish
+  temp=1.2, seeds=['i', 'told', 'my'] -> i told my girlfriend the house my vincent ago i asked her to quite me and i pushed em over now only loud i got my yard wipes like my ramifications
+
+=== gen_gru (gru) ===
+  temp=0.6, seeds=['what', 'did', 'the'] -> what did the fish say when it hit the wall dam
+  temp=0.6, seeds=['why', 'did', 'the'] -> why did the superhero fall over because it was tired
+  temp=0.6, seeds=['how', 'do', 'you'] -> how do you make a tissue dance you put a little boogie in it
+  temp=0.6, seeds=['i', 'told', 'my'] -> i told my cat she was too cheesy
+  temp=0.8, seeds=['what', 'did', 'the'] -> what did the corn say when it hit the wall dam
+  temp=0.8, seeds=['why', 'did', 'the'] -> why did the squirrel take a ladder to hear the man spied using it was mugged
+  temp=0.8, seeds=['how', 'do', 'you'] -> how do you make a squid laugh ten tickles
+  temp=0.8, seeds=['i', 'told', 'my'] -> i told my girlfriend its going to college on he said he was such any bucket
+  temp=1.0, seeds=['what', 'did', 'the'] -> what did the space say to the other man weve have now robert
+  temp=1.0, seeds=['why', 'did', 'the'] -> why did the packaged buy decide beer all timeout because she was a little sinatra
+  temp=1.0, seeds=['how', 'do', 'you'] -> how do you pay for things in raping the czech republic cash or czech edit myself
+  temp=1.0, seeds=['i', 'told', 'my'] -> i told my girlfriend she drew her eyebrows on her tuffet to really her as to 14days me the steps day in the world that came behind told this morning
+  temp=1.2, seeds=['what', 'did', 'the'] -> what did the traffic scientist say vincent that jaundice wall let
+  temp=1.2, seeds=['why', 'did', 'the'] -> why did the golfer master love of the other because its only lefts
+  temp=1.2, seeds=['how', 'do', 'you'] -> how do you unlock igloos a snowman with extreme from a elephants wom
+  temp=1.2, seeds=['i', 'told', 'my'] -> i told my girlfriend branson mirrors a sex free
+
+=== gen_rnn (rnn) ===
+  temp=0.6, seeds=['what', 'did', 'the'] -> what did the buffalo say when his mail truck caught fire in a bowl
+  temp=0.6, seeds=['why', 'did', 'the'] -> why did the knife go to the dentist to get to the morons house
+  temp=0.6, seeds=['how', 'do', 'you'] -> how do you call a smart pig swinestein
+  temp=0.6, seeds=['i', 'told', 'my'] -> i told my girlfriend who was voted what so you can pick your friends nose
+  temp=0.8, seeds=['what', 'did', 'the'] -> what did the judge say when it saw the farmer twice
+  temp=0.8, seeds=['why', 'did', 'the'] -> why did the library man and two farts a fight because that does the belong twice
+  temp=0.8, seeds=['how', 'do', 'you'] -> how do you catch a oneofakind rabbit unique up on it
+  temp=0.8, seeds=['i', 'told', 'my'] -> i told my girlfriend remote waldo to see your drawers he told me up
+  temp=1.0, seeds=['what', 'did', 'the'] -> what did the skeleton sentence say to the planet they dress like
+  temp=1.0, seeds=['why', 'did', 'the'] -> why did the chicken cross the road to get to the other slide
+  temp=1.0, seeds=['how', 'do', 'you'] -> how do you confuse a broken chef with no legs ground who
+  temp=1.0, seeds=['i', 'told', 'my'] -> i told my girlfriend joke learnt age i said i feel myself to service his speaking password i am give to me another one of its paws
+  temp=1.2, seeds=['what', 'did', 'the'] -> what did the tailpipe say to the american when asked hallucination left it to me in this away
+  temp=1.2, seeds=['why', 'did', 'the'] -> why did the snail delivery novocaine in her new someday roverdosehttpiimgurcombtyf5ysjpg because it would be bach
+  temp=1.2, seeds=['how', 'do', 'you'] -> how do you only a broken fruit my wayward hotdogs everything
+  temp=1.2, seeds=['i', 'told', 'my'] -> i told my spectors free day joke its always come diabetes good
+
