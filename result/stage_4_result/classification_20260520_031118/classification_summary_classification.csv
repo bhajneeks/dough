@@ -1,0 +1,2 @@
+experiment,cell_type,epochs,best_epoch,accuracy,precision,recall,f1,best_accuracy,training_time,total_time,embedding_dim,hidden_dim,num_layers,dropout,bidirectional,max_seq_length,learning_rate,max_train_per_class,max_test_per_class
+cls_gru,gru,10,8,0.8882,0.8872,0.8894,0.8883,0.8907,692.2,928.2,128,128,2,0.3,True,300,0.001,,

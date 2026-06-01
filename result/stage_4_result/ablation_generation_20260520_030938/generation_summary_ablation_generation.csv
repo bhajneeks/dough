@@ -1,0 +1,6 @@
+experiment,cell_type,epochs,final_loss,training_time,total_time,embedding_dim,hidden_dim,num_layers,dropout,max_seq_length,learning_rate,generation_length,temperature,sample_temperatures,max_jokes
+gen_gru_ab_base,gru,25,2.7059,12.6,14.8,128,256,2,0.3,50,0.001,30,0.8,0.6;0.8;1.0;1.2,1200
+gen_gru_hidden128,gru,25,4.0368,6.7,7.0,128,128,2,0.3,50,0.001,30,0.8,0.6;0.8;1.0;1.2,1200
+gen_gru_embed64,gru,25,3.0818,12.4,12.7,64,256,2,0.3,50,0.001,30,0.8,0.6;0.8;1.0;1.2,1200
+gen_gru_seq30,gru,25,2.6987,11.5,11.8,128,256,2,0.3,30,0.001,30,0.8,0.6;0.8;1.0;1.2,1200
+gen_gru_len60,gru,25,2.7059,12.0,12.3,128,256,2,0.3,50,0.001,60,0.8,0.6;0.8;1.0;1.2,1200
